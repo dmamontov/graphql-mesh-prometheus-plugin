@@ -4,6 +4,7 @@ import { type MeshPlugin, type MeshPluginOptions } from '@graphql-mesh/types';
 import { createDefaultExecutor } from '@graphql-tools/delegate';
 import { type ExecutionResult } from '@graphql-tools/utils';
 import { type PrometheusConfig } from './types';
+import { collectKeys } from './utils';
 
 class SilentRegistry extends Registry {
     registerMetric(metric: any) {
@@ -147,6 +148,19 @@ export default function usePrometheus(
         });
     }
 
+    let delegateArgumentsCounter: Counter | undefined;
+    if (options.delegationArgumentsCount) {
+        delegateArgumentsCounter = new Counter({
+            name:
+                typeof options.delegationArgumentsCount === 'string'
+                    ? options.delegationArgumentsCount
+                    : 'graphql_mesh_delegate_arguments',
+            help: 'Counts the amount of arguments from delegate execute',
+            labelNames: ['sourceName', 'typeName', 'fieldName', 'operationType', 'argumentPath'],
+            registers: [registry],
+        });
+    }
+
     return {
         onPluginInit: function ({ addPlugin }) {
             addPlugin({
@@ -179,6 +193,15 @@ export default function usePrometheus(
 
             if (delegateCounter) {
                 delegateCounter.labels(labels).inc();
+            }
+
+            if (delegateArgumentsCounter) {
+                const args = payload.key ? payload.argsFromKeys([payload.key]) : payload.args;
+                if (args) {
+                    collectKeys(args || {}).forEach(argumentPath => {
+                        delegateArgumentsCounter.labels({ ...labels, argumentPath }).inc();
+                    });
+                }
             }
 
             // @ts-expect-error

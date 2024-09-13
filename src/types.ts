@@ -16,5 +16,6 @@ export interface PrometheusConfig {
     delegationExecuteSummary?: boolean | string;
     delegationExecuteErrors?: boolean | string;
     delegationExecuteTotalDuration?: boolean | string;
+    delegationArgumentsCount?: boolean | string;
     endpoint?: boolean | string;
 }
